@@ -7,7 +7,7 @@ import mongoose from "mongoose";
 
 export const getQuiz = async (req, res) => {
     try {
-        const { courseId } = req.params;
+        const { courseId, chapterId } = req.params;
         const userId = req.auth.userId;
 
         if (!mongoose.Types.ObjectId.isValid(courseId)) {
@@ -33,7 +33,7 @@ export const getQuiz = async (req, res) => {
             });
         }
 
-        const quiz = await Quiz.findOne({ courseId });
+        const quiz = await Quiz.findOne({ courseId, chapterId });
 
         if (!quiz) {
             return res.json({
@@ -49,24 +49,28 @@ export const getQuiz = async (req, res) => {
 };
 export const createQuiz = async (req, res) => {
     try {
-        const { courseId, title, questions } = req.body;
+        const { courseId, chapterId, title, questions } = req.body;
 
-        if (!courseId || !title) {
+        if (!courseId || !chapterId || !title) {
             return res.json({
                 success: false,
-                message: "courseId and title are required",
+                message: "courseId, chapterId and title are required",
             });
         }
 
-        if (!questions || !Array.isArray(questions) || questions.length === 0) {
+        // 🔥 prevent duplicate quiz per chapter
+        const existing = await Quiz.findOne({ courseId, chapterId });
+
+        if (existing) {
             return res.json({
                 success: false,
-                message: "At least one question is required",
+                message: "Quiz already exists for this chapter",
             });
         }
 
         const quiz = await Quiz.create({
             courseId,
+            chapterId,
             title,
             questions,
         });
