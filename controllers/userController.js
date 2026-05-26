@@ -9,63 +9,102 @@ import { clerkClient } from "@clerk/express";
 // controllers/userController.js
 
 export const getUserData = async (req, res) => {
-    try {
-        const userId = req.auth.userId;
+  try {
+    const userId = req.auth?.userId;
 
-        // Check if user already exists
-        let user = await User.findById(userId);
-
-        if (!user) {
-            // Fetch full user details from Clerk
-            const clerkUser = await clerkClient.users.getUser(userId);
-
-            // Create new user in our database
-            user = await User.create({
-                _id: userId,
-                name: clerkUser.fullName ||
-                    `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() ||
-                    "Unnamed User",
-                email: clerkUser.emailAddresses[0]?.emailAddress || clerkUser.primaryEmailAddress?.emailAddress || "",
-                imageUrl: clerkUser.imageUrl || clerkUser.profileImageUrl || "",
-                enrolledCourses: [],
-            });
-
-          
-        }
-
-        return res.json({
-            success: true,
-            user
-        });
-
-    } catch (error) {
-        console.error("getUserData Error:", error);
-        return res.json({
-            success: false,
-            message: "Failed to fetch user data"
-        });
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized. Please login again.",
+      });
     }
+
+    let user = await User.findById(userId);
+
+    if (!user) {
+      let clerkUser = null;
+
+      try {
+        clerkUser = await clerkClient.users.getUser(userId);
+      } catch (clerkError) {
+        console.error("Clerk user fetch failed:", clerkError.message);
+      }
+
+      const firstName = clerkUser?.firstName || "";
+      const lastName = clerkUser?.lastName || "";
+
+      const name =
+        `${firstName} ${lastName}`.trim() ||
+        clerkUser?.fullName ||
+        clerkUser?.username ||
+        clerkUser?.primaryEmailAddress?.emailAddress ||
+        "Unnamed User";
+
+      const email =
+        clerkUser?.primaryEmailAddress?.emailAddress ||
+        clerkUser?.emailAddresses?.[0]?.emailAddress ||
+        "";
+
+      user = await User.create({
+        _id: userId,
+        name,
+        email,
+        imageUrl: clerkUser?.imageUrl || clerkUser?.profileImageUrl || "",
+        enrolledCourses: [],
+      });
+    }
+
+    return res.json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    console.error("getUserData Error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 };
 // User enrolled courses
 export const userEnrolledCourses = async (req, res) => {
-    try {
-        const userId = req.auth.userId;
+  try {
+    const userId = req.auth?.userId;
 
-        const userData = await User.findById(userId).populate('enrolledCourses');
-
-        if (!userData) {
-            return res.json({ success: false, message: "User not found" });
-        }
-
-        return res.json({
-            success: true,
-            enrolledCourses: userData.enrolledCourses || []
-        });
-
-    } catch (error) {
-        console.error("userEnrolledCourses Error:", error);
-        return res.json({ success: false, message: error.message });
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized. Please login again.",
+      });
     }
+
+    let userData = await User.findById(userId).populate("enrolledCourses");
+
+    if (!userData) {
+      userData = await User.create({
+        _id: userId,
+        name: "Unnamed User",
+        email: "",
+        imageUrl: "",
+        enrolledCourses: [],
+      });
+
+      userData = await User.findById(userId).populate("enrolledCourses");
+    }
+
+    return res.json({
+      success: true,
+      enrolledCourses: userData.enrolledCourses || [],
+    });
+  } catch (error) {
+    console.error("userEnrolledCourses Error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 };
 
 // Purchase course

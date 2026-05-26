@@ -30,27 +30,27 @@ export const getAllCourse = async (req, res) => {
 
 // get course by id
 
-export const getCourseId = async(req,res)=>{
-    const {id} = req.params 
-    try {
+export const getCourseId = async (req, res) => {
+  const { id } = req.params
+  try {
 
-        const courseData = await Course.findById(id).populate({path:'educator'});
+    const courseData = await Course.findById(id).populate({ path: 'educator' });
 
-        // Remove lecture Url if previewFrese is false
+    // Remove lecture Url if previewFrese is false
 
-        courseData.courseContent.forEach(chapter => {
-            chapter.chapterContent.forEach(lecture => {
-                if(!lecture.isPreviewFree){
-                    lecture.lectureUrl = "";
-                }
-            })
-        })
+    courseData.courseContent.forEach(chapter => {
+      chapter.chapterContent.forEach(lecture => {
+        if (!lecture.isPreviewFree) {
+          lecture.lectureUrl = "";
+        }
+      })
+    })
 
-        res.json({success:true, courseData})
-        
-    } catch (error) {
-        res.json({success: false, message:error.message})
-    }
+    res.json({ success: true, courseData })
+
+  } catch (error) {
+    res.json({ success: false, message: error.message })
+  }
 }
 
 // \for updating the course
@@ -115,7 +115,10 @@ export const addChapter = async (req, res) => {
       return res.json({ success: false, message: "Course not found" });
     }
 
-    course.courseContent.push(chapter);
+    course.courseContent.push({
+      ...chapter,
+      chapterContent: [],
+    });
 
     await course.save();
 
@@ -133,6 +136,10 @@ export const addLecture = async (req, res) => {
       return res.json({ success: false, message: "Missing data" });
     }
 
+    if (!lecture.lectureUrl) {
+      return res.json({ success: false, message: "Lecture URL is required" });
+    }
+
     const course = await Course.findById(courseId);
 
     if (!course) {
@@ -147,7 +154,11 @@ export const addLecture = async (req, res) => {
       return res.json({ success: false, message: "Chapter not found" });
     }
 
-    chapter.chapterContent.push(lecture);
+    chapter.chapterContent.push({
+      ...lecture,
+      lectureDuration: Number(lecture.lectureDuration),
+      lectureOrder: Number(lecture.lectureOrder),
+    });
 
     await course.save();
 

@@ -5,6 +5,8 @@ import { clerkMiddleware } from "@clerk/express";
 const router = express.Router();
 
 router.post("/create", clerkMiddleware(), createQuiz);
-router.get("/:courseId", clerkMiddleware(), getQuiz);
+
+// chapter-wise quiz route
+router.get("/:courseId/:chapterId", clerkMiddleware(), getQuiz);
 
 export default router;
