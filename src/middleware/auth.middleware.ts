@@ -1,4 +1,5 @@
 import { Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 import { verifyAccessToken } from '../utils/token.js';
 import User from '../models/User.js';
 import { ApiResponse } from '../utils/apiResponse.js';
@@ -23,11 +24,28 @@ export const authenticateUser = async (
     // 1. Check for Bearer token
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];
-      const decoded = verifyAccessToken(token);
+      
+      try {
+        const decoded = verifyAccessToken(token);
+        if (decoded && (decoded.id || (decoded as any).userId)) {
+          userId = decoded.id || (decoded as any).userId;
+          authType = 'jwt';
+        }
+      } catch (err) {
+        // Ignored - fallback to decoding Clerk JWT
+      }
 
-      if (decoded && decoded.id) {
-        userId = decoded.id;
-        authType = 'jwt';
+      // If not a native JWT, try decoding Clerk JWT payload
+      if (!userId && token) {
+        try {
+          const clerkDecoded = jwt.decode(token) as any;
+          if (clerkDecoded && (clerkDecoded.sub || clerkDecoded.userId || clerkDecoded.id)) {
+            userId = clerkDecoded.sub || clerkDecoded.userId || clerkDecoded.id;
+            authType = 'clerk';
+          }
+        } catch (clerkDecodeErr) {
+          // Ignored
+        }
       }
     }
 
@@ -46,31 +64,42 @@ export const authenticateUser = async (
     // Find user in database
     let user = await User.findById(userId);
 
-    // If authenticated via Clerk but user not in DB yet, auto-provision
-    if (!user && authType === 'clerk') {
+    // If authenticated via Clerk but user not in DB yet, auto-provision user
+    if (!user) {
       try {
-        const clerkUser = await (clerkClient.users as any).getUser(userId);
-        const firstName = clerkUser?.firstName || '';
-        const lastName = clerkUser?.lastName || '';
-        const name = `${firstName} ${lastName}`.trim() || clerkUser?.username || 'User';
-        const email =
-          clerkUser?.primaryEmailAddress?.emailAddress ||
-          clerkUser?.emailAddresses?.[0]?.emailAddress ||
-          '';
-        const clerkRole = clerkUser?.publicMetadata?.role;
-        const role = normalizeRole(clerkRole);
+        let name = 'User';
+        let email = '';
+        let imageUrl = '';
+        let role = 'student';
+
+        try {
+          const clerkUser = await (clerkClient.users as any).getUser(userId);
+          const firstName = clerkUser?.firstName || '';
+          const lastName = clerkUser?.lastName || '';
+          name = ${firstName} .trim() || clerkUser?.username || 'User';
+          email =
+            clerkUser?.primaryEmailAddress?.emailAddress ||
+            clerkUser?.emailAddresses?.[0]?.emailAddress ||
+            '';
+          imageUrl = clerkUser?.imageUrl || '';
+          const clerkRole = clerkUser?.publicMetadata?.role;
+          role = normalizeRole(clerkRole);
+        } catch (clerkFetchErr: any) {
+          console.warn('[AuthMiddleware] Clerk API user fetch warning:', clerkFetchErr.message);
+        }
 
         user = await User.create({
           _id: userId,
           name,
-          email,
-          imageUrl: clerkUser?.imageUrl || '',
-          profileImage: clerkUser?.imageUrl || '',
+          email: email || ${userId}@user.com,
+          imageUrl,
+          profileImage: imageUrl,
           role,
           enrolledCourses: [],
         });
-      } catch (clerkErr: any) {
-        console.error('[AuthMiddleware] Clerk user sync failed:', clerkErr.message);
+      } catch (createErr: any) {
+        console.error('[AuthMiddleware] Auto user creation error:', createErr.message);
+        user = await User.findById(userId);
       }
     }
 
@@ -110,6 +139,13 @@ export const optionalAuth = async (
       const decoded = verifyAccessToken(token);
       if (decoded && decoded.id) {
         userId = decoded.id;
+      } else {
+        try {
+          const clerkDecoded = jwt.decode(token) as any;
+          if (clerkDecoded && (clerkDecoded.sub || clerkDecoded.userId || clerkDecoded.id)) {
+            userId = clerkDecoded.sub || clerkDecoded.userId || clerkDecoded.id;
+          }
+        } catch (e) {}
       }
     } else {
       const clerkAuth = (req as any).auth;
