@@ -1,9 +1,0 @@
-import { z } from 'zod';
-
-export const purchaseCourseSchema = z.object({
-  courseId: z.string().min(1, 'courseId is required'),
-});
-
-export const updatePaymentSchema = z.object({
-  purchaseId: z.string().min(1, 'purchaseId is required'),
-});
