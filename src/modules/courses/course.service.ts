@@ -1,6 +1,6 @@
 import { v2 as cloudinary } from 'cloudinary';
-import Course from './course.model.ts';
-import User from '../users/user.model.ts';
+import Course from './course.model.js';
+import User from '../users/user.model.js';
 import { ApiError } from '../../utils/apiError.js';
 import { slugify } from '../../utils/slugify.js';
 import { ICourse, CourseStatus } from './course.types.js';

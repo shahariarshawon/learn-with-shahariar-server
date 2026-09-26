@@ -21,7 +21,8 @@ import {
   addLecture,
 } from './course.controller.js';
 import { requireAuth, optionalAuth } from '../../middleware/auth.middleware.js';
-import { uploadSingle } from '../../middleware/upload.middleware.js';
+import upload from '../../middleware/upload.middleware.js';
+const uploadSingle = (fieldName: string) => upload.single(fieldName);
 import { validateCreateCourse, validateUpdateCourse } from './course.validation.js';
 
 const router = Router();

@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import Course from '../courses/course.model.js';
-import Purchase from '../payment/purchase.model.js';
+import Purchase from '../../models/Purchase.js';
 import User from './user.model.js';
 import CourseProgress from '../../models/CourseProgress.js';
 import { clerkClient } from '@clerk/express';
