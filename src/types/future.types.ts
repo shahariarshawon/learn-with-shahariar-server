@@ -1,38 +1,9 @@
 import { Document, Types } from 'mongoose';
+import { ILesson } from './lesson.types.js';
+import { IEnrollment } from './enrollment.types.js';
 
-export interface ILesson {
-  _id?: Types.ObjectId | string;
-  courseId: Types.ObjectId | string;
-  chapterId: string;
-  title: string;
-  duration?: number;
-  videoUrl?: string;
-  content?: string;
-  isPreviewFree?: boolean;
-  order: number;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-export interface ILessonDocument extends Document, Omit<ILesson, '_id'> {
-  _id: Types.ObjectId;
-}
-
-export interface IEnrollment {
-  _id?: Types.ObjectId | string;
-  userId: string;
-  courseId: Types.ObjectId | string;
-  enrolledAt?: Date;
-  status: 'active' | 'completed' | 'cancelled';
-  progressPercentage: number;
-  completedAt?: Date;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-export interface IEnrollmentDocument extends Document, Omit<IEnrollment, '_id'> {
-  _id: Types.ObjectId;
-}
+export { ILesson, ILessonDocument } from './lesson.types.js';
+export { IEnrollment, IEnrollmentDocument } from './enrollment.types.js';
 
 export interface ICertificate {
   _id?: Types.ObjectId | string;

@@ -1,5 +1,7 @@
 export * from './user.types.js';
 export * from './course.types.js';
+export * from './lesson.types.js';
+export * from './enrollment.types.js';
 export * from './purchase.types.js';
 export * from './progress.types.js';
 export * from './quiz.types.js';

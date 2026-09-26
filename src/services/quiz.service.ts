@@ -38,9 +38,8 @@ export class QuizService {
       throw new ApiError(403, 'Not enrolled in course');
     }
 
-    const chapter = course.courseContent.find(
-      (ch: IChapter) => ch.chapterId === chapterId
-    );
+    const contentList: IChapter[] = (course as any).courseContent || [];
+    const chapter = contentList.find((ch: IChapter) => ch.chapterId === chapterId);
 
     if (!chapter) {
       throw new ApiError(404, 'Chapter not found');
@@ -102,9 +101,8 @@ export class QuizService {
       throw new ApiError(403, 'You are not allowed to create quiz for this course');
     }
 
-    const chapterExists = course.courseContent.some(
-      (ch: IChapter) => ch.chapterId === chapterId
-    );
+    const contentList: IChapter[] = (course as any).courseContent || [];
+    const chapterExists = contentList.some((ch: IChapter) => ch.chapterId === chapterId);
 
     if (!chapterExists) {
       throw new ApiError(404, 'Selected chapter does not exist in this course');

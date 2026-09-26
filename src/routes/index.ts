@@ -8,7 +8,8 @@ import quizRouter from './quiz.routes.js';
 const apiRouter: Router = express.Router();
 
 apiRouter.use('/auth', authRouter);
-apiRouter.use('/course', courseRouter);
+apiRouter.use('/courses', courseRouter); // Professional LMS Courses API
+apiRouter.use('/course', courseRouter);  // Legacy compatibility alias
 apiRouter.use('/educator', educatorRouter);
 apiRouter.use('/user', userRouter);
 apiRouter.use('/quiz', quizRouter);

@@ -1,6 +1,8 @@
 import { Document, Types } from 'mongoose';
+import { ILesson } from './lesson.types.js';
 
 export type CourseLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels';
+export type CourseStatus = 'draft' | 'published' | 'archived';
 
 export interface ILecture {
   lectureId: string;
@@ -18,6 +20,20 @@ export interface IChapter {
   chapterContent: ILecture[];
 }
 
+export interface IModule {
+  moduleId: string;
+  moduleTitle: string;
+  moduleOrder: number;
+  description?: string;
+  lessons: ILesson[];
+}
+
+export interface IRoadmapItem {
+  title: string;
+  description?: string;
+  order: number;
+}
+
 export interface ICourseRating {
   userId: string;
   rating: number;
@@ -26,30 +42,45 @@ export interface ICourseRating {
 export interface ICourse {
   _id?: Types.ObjectId | string;
   courseTitle: string;
+  title?: string;
+  slug: string;
   courseDescription: string;
+  description?: string;
   courseThumbnail?: string;
-  coursePrice: number;
-  discount?: number;
-  isPublished?: boolean;
+  thumbnail?: string;
   category?: string;
   level?: CourseLevel;
+  language?: string;
+  coursePrice: number;
+  price?: number;
+  discount?: number;
+  discountPrice?: number;
   duration?: string;
-  requirements?: string[];
-  learningObjectives?: string[];
-  courseContent: IChapter[];
+  status: CourseStatus;
+  isPublished?: boolean;
+  
+  // Instructor reference
   educator: string;
+  instructorId?: string;
+
+  // Learning information
+  learningObjectives?: string[];
+  prerequisites?: string[];
+  skills?: string[];
+
+  // Structure & Roadmap
+  roadmap?: IRoadmapItem[];
+  modules: IModule[];
+  courseContent?: IChapter[];
+
+  // Social & Enrollment
   courseRatings?: ICourseRating[];
   enrolledStudents?: string[];
+
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 export interface ICourseDocument extends Document, Omit<ICourse, '_id'> {
   _id: Types.ObjectId;
-  title?: string;
-  description?: string;
-  thumbnail?: string;
-  price?: number;
-  instructor?: string;
-  sections?: IChapter[];
 }
