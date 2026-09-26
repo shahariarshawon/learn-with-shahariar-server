@@ -64,7 +64,7 @@ export const authenticateUser = async (
     // Find user in database
     let user = await User.findById(userId);
 
-    // If authenticated via Clerk but user not in DB yet, auto-provision user
+    // If user not in DB yet, auto-provision user profile
     if (!user) {
       try {
         let name = 'User';
@@ -76,7 +76,7 @@ export const authenticateUser = async (
           const clerkUser = await (clerkClient.users as any).getUser(userId);
           const firstName = clerkUser?.firstName || '';
           const lastName = clerkUser?.lastName || '';
-          name = ${firstName} .trim() || clerkUser?.username || 'User';
+          name = `${firstName} ${lastName}`.trim() || clerkUser?.username || 'User';
           email =
             clerkUser?.primaryEmailAddress?.emailAddress ||
             clerkUser?.emailAddresses?.[0]?.emailAddress ||
@@ -91,7 +91,7 @@ export const authenticateUser = async (
         user = await User.create({
           _id: userId,
           name,
-          email: email || ${userId}@user.com,
+          email: email || `${userId}@user.com`,
           imageUrl,
           profileImage: imageUrl,
           role,
@@ -127,7 +127,7 @@ export const authenticateUser = async (
  */
 export const optionalAuth = async (
   req: AuthenticatedRequest,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
@@ -139,13 +139,6 @@ export const optionalAuth = async (
       const decoded = verifyAccessToken(token);
       if (decoded && decoded.id) {
         userId = decoded.id;
-      } else {
-        try {
-          const clerkDecoded = jwt.decode(token) as any;
-          if (clerkDecoded && (clerkDecoded.sub || clerkDecoded.userId || clerkDecoded.id)) {
-            userId = clerkDecoded.sub || clerkDecoded.userId || clerkDecoded.id;
-          }
-        } catch (e) {}
       }
     } else {
       const clerkAuth = (req as any).auth;
