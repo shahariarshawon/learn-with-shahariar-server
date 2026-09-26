@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
-export type TransactionStatus = 'completed' | 'refunded' | 'failed';
+export type TransactionStatus = 'pending' | 'success' | 'completed' | 'failed' | 'refunded';
 
 export interface ITransaction {
   transactionId: string;
@@ -13,6 +13,7 @@ export interface ITransaction {
   paymentMethod?: string;
   refundReason?: string;
   refundedAt?: Date;
+  stripeSessionId?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -58,13 +59,13 @@ const transactionSchema = new Schema<ITransactionDocument>(
     },
     status: {
       type: String,
-      enum: ['completed', 'refunded', 'failed'],
-      default: 'completed',
+      enum: ['pending', 'success', 'completed', 'failed', 'refunded'],
+      default: 'pending',
       index: true,
     },
     paymentMethod: {
       type: String,
-      default: 'card',
+      default: 'stripe',
       trim: true,
     },
     refundReason: {
@@ -74,6 +75,11 @@ const transactionSchema = new Schema<ITransactionDocument>(
     refundedAt: {
       type: Date,
     },
+    stripeSessionId: {
+      type: String,
+      trim: true,
+      index: true,
+    },
   },
   {
     timestamps: true,
@@ -82,6 +88,7 @@ const transactionSchema = new Schema<ITransactionDocument>(
 
 transactionSchema.index({ status: 1, createdAt: -1 });
 transactionSchema.index({ studentId: 1, createdAt: -1 });
+transactionSchema.index({ courseId: 1, createdAt: -1 });
 
 export const Transaction: Model<ITransactionDocument> =
   (mongoose.models.Transaction as Model<ITransactionDocument>) ||

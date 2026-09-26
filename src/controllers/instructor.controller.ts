@@ -73,6 +73,19 @@ export class InstructorController {
     const analytics = await InstructorService.getCourseAnalytics(instructorId, courseId);
     return ApiResponse.success(res, 'Course analytics retrieved successfully', analytics);
   });
+
+  /**
+   * GET /api/instructor/revenue
+   */
+  static getRevenue = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const instructorId = (req.auth?.userId || req.user?._id)?.toString();
+    if (!instructorId) {
+      return ApiResponse.error(res, 'Unauthorized access', null, 401);
+    }
+
+    const data = await InstructorService.getInstructorRevenueData(instructorId);
+    return ApiResponse.success(res, 'Instructor revenue analytics retrieved successfully', data);
+  });
 }
 
 export default InstructorController;

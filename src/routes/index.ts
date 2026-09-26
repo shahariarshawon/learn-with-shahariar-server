@@ -12,6 +12,9 @@ import noteRouter from './note.routes.js';
 import videoRouter from './video.routes.js';
 import instructorRouter from './instructor.routes.js';
 import adminRouter from './admin.routes.js';
+import paymentRouter from './payment.routes.js';
+import subscriptionRouter from './subscription.routes.js';
+import certificateRouter from './certificate.routes.js';
 
 const apiRouter: Router = express.Router();
 
@@ -21,6 +24,9 @@ apiRouter.use('/course', courseRouter);
 apiRouter.use('/educator', educatorRouter);
 apiRouter.use('/instructor', instructorRouter);
 apiRouter.use('/admin', adminRouter);
+apiRouter.use('/payment', paymentRouter);
+apiRouter.use('/subscription', subscriptionRouter);
+apiRouter.use('/certificate', certificateRouter);
 apiRouter.use('/user', userRouter);
 apiRouter.use('/quiz', quizRouter);
 apiRouter.use('/progress', progressRouter);

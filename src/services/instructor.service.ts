@@ -162,6 +162,40 @@ export class InstructorService {
       instructorEarning,
     };
   }
+
+  /**
+   * Retrieves complete revenue breakdown for an instructor
+   */
+  static async getInstructorRevenueData(instructorId: string) {
+    const revenueRecords = await Revenue.find({ instructorId })
+      .populate('courseId', 'courseTitle title')
+      .populate('studentId', 'name email')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const totalRevenue = revenueRecords.reduce((sum, r) => sum + (r.totalAmount || 0), 0);
+    const instructorEarnings = revenueRecords.reduce((sum, r) => sum + (r.instructorEarning || 0), 0);
+    const platformCommission = revenueRecords.reduce((sum, r) => sum + (r.platformCommission || 0), 0);
+    const salesCount = revenueRecords.length;
+
+    return {
+      totalRevenue,
+      instructorEarnings,
+      platformCommission,
+      salesCount,
+      recentTransactions: revenueRecords.map((r: any) => ({
+        revenueId: r._id,
+        purchaseId: r.purchaseId,
+        courseTitle: r.courseId?.courseTitle || r.courseId?.title || 'Course',
+        studentName: r.studentId?.name || 'Student',
+        studentEmail: r.studentId?.email || '',
+        totalAmount: r.totalAmount,
+        instructorEarning: r.instructorEarning,
+        platformCommission: r.platformCommission,
+        createdAt: r.createdAt,
+      })),
+    };
+  }
 }
 
 export default InstructorService;

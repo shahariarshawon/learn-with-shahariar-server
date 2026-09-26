@@ -34,4 +34,9 @@ instructorRouter.get('/students', InstructorController.getStudents as any);
  */
 instructorRouter.get('/analytics/:courseId', InstructorController.getCourseAnalytics as any);
 
+/**
+ * GET /api/instructor/revenue
+ */
+instructorRouter.get('/revenue', InstructorController.getRevenue as any);
+
 export default instructorRouter;
