@@ -1,7 +1,2 @@
-import multer from 'multer'
-
-const storage = multer.diskStorage({})
-
-const upload = multer({storage})
-
+import upload from '../src/middleware/upload.middleware.js';
 export default upload;
