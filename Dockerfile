@@ -8,7 +8,7 @@ WORKDIR /app
 # Install dependencies
 COPY package*.json ./
 COPY .npmrc ./
-RUN npm ci --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 
 # Copy source files and compile TypeScript
 COPY . .
@@ -25,7 +25,7 @@ ENV PORT=5001
 # Copy compiled files and production dependencies
 COPY package*.json ./
 COPY .npmrc ./
-RUN npm ci --omit=production --legacy-peer-deps || npm ci --legacy-peer-deps
+RUN npm install --omit=dev --legacy-peer-deps
 
 COPY --from=builder /app/dist ./dist
 
