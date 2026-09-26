@@ -3,20 +3,20 @@ import { ApiResponse } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/apiError.js';
 import { env } from '../config/env.js';
 
-export const notFoundHandler = (req: Request, res: Response, next: NextFunction): void => {
+export const notFoundHandler = (req: Request, _res: Response, next: NextFunction): void => {
   const error = new ApiError(404, `Route not found: ${req.method} ${req.originalUrl}`);
   next(error);
 };
 
 export const errorHandler = (
-  err: any,
+  err: ApiError | Error | any,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): Response => {
-  let statusCode = err.statusCode || (res.statusCode !== 200 ? res.statusCode : 500);
+  let statusCode = (err as ApiError).statusCode || (res.statusCode !== 200 ? res.statusCode : 500);
   let message = err.message || 'Internal Server Error';
-  let errors = err.errors || null;
+  let errors = (err as ApiError).errors || null;
 
   // Handle Mongoose CastError (invalid ObjectId)
   if (err.name === 'CastError') {

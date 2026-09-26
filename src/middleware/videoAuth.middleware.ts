@@ -1,28 +1,29 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import Course from '../models/Course.js';
 import Lesson from '../models/Lesson.js';
 import Enrollment from '../models/Enrollment.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { EnrollmentError } from '../utils/errors.js';
 import { ROLES, normalizeRole } from '../constants/roles.js';
-import { AuthenticatedRequest } from '../types/express.types.js';
 
-export const verifyVideoAccess = async (
-  req: AuthenticatedRequest,
+export const verifyVideoAccess: RequestHandler = async (
+  req: Request,
   res: Response,
   next: NextFunction
-): Promise<any> => {
+): Promise<void> => {
   try {
-    const studentId = req.auth?.userId || req.user?._id;
+    const studentId = req.auth?.userId || req.user?._id?.toString();
     const userRole = normalizeRole(req.user?.role || req.auth?.role);
 
     if (!studentId) {
-      return ApiResponse.error(res, 'Unauthorized: Please authenticate first', null, 401);
+      ApiResponse.error(res, 'Unauthorized: Please authenticate first', null, 401);
+      return;
     }
 
     const lessonId = req.params.lessonId || req.body.lessonId;
     if (!lessonId) {
-      return ApiResponse.error(res, 'Lesson ID is required', null, 400);
+      ApiResponse.error(res, 'Lesson ID is required', null, 400);
+      return;
     }
 
     // Step 1: Find lesson metadata & parent courseId
@@ -64,12 +65,14 @@ export const verifyVideoAccess = async (
     }
 
     if (!courseId) {
-      return ApiResponse.error(res, 'Lesson or associated course not found', null, 404);
+      ApiResponse.error(res, 'Lesson or associated course not found', null, 404);
+      return;
     }
 
     const course = await Course.findById(courseId);
     if (!course) {
-      return ApiResponse.error(res, 'Associated course not found', null, 404);
+      ApiResponse.error(res, 'Associated course not found', null, 404);
+      return;
     }
 
     // Prepare permission flags
@@ -80,7 +83,7 @@ export const verifyVideoAccess = async (
 
     // Admins and Course Owners automatically get access
     if (isAdmin || isOwner) {
-      (req as any).videoAccess = {
+      req.videoAccess = {
         courseId,
         lessonId,
         lesson: targetLesson,
@@ -92,7 +95,7 @@ export const verifyVideoAccess = async (
 
     // Allow free preview lessons if marked isPreview
     if (targetLesson?.isPreview || targetLesson?.isPreviewFree) {
-      (req as any).videoAccess = {
+      req.videoAccess = {
         courseId,
         lessonId,
         lesson: targetLesson,
@@ -111,11 +114,12 @@ export const verifyVideoAccess = async (
 
     if (!enrollment) {
       // Exact 403 response message requested: "You are not enrolled in this course."
-      return ApiResponse.error(res, 'You are not enrolled in this course.', null, 403);
+      ApiResponse.error(res, 'You are not enrolled in this course.', null, 403);
+      return;
     }
 
-    (req as any).enrollment = enrollment;
-    (req as any).videoAccess = {
+    req.enrollment = enrollment;
+    req.videoAccess = {
       courseId,
       lessonId,
       lesson: targetLesson,
@@ -126,9 +130,10 @@ export const verifyVideoAccess = async (
     next();
   } catch (error: any) {
     if (error instanceof EnrollmentError) {
-      return ApiResponse.error(res, error.message, null, error.statusCode);
+      ApiResponse.error(res, error.message, null, error.statusCode);
+      return;
     }
-    return ApiResponse.error(res, error.message || 'Video access verification failed', null, 500);
+    ApiResponse.error(res, error?.message || 'Video access verification failed', null, 500);
   }
 };
 

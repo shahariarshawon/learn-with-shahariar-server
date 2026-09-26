@@ -1,12 +1,12 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { ZodSchema, ZodError, ZodIssue } from 'zod';
 import { ApiResponse } from '../utils/apiResponse.js';
 
 export const validateRequest = (
   schema: ZodSchema,
   source: 'body' | 'query' | 'params' = 'body'
-) => {
-  return async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+): RequestHandler => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const parsed = await schema.parseAsync(req[source]);
       req[source] = parsed;
@@ -16,9 +16,10 @@ export const validateRequest = (
         const errorMessages = error.issues
           .map((issue: ZodIssue) => `${issue.path.join('.')}: ${issue.message}`)
           .join(', ');
-        return ApiResponse.error(res, `Validation error: ${errorMessages}`, error.issues, 400);
+        ApiResponse.error(res, `Validation error: ${errorMessages}`, error.issues, 400);
+        return;
       }
-      return ApiResponse.error(res, error.message || 'Validation failed', null, 400);
+      ApiResponse.error(res, error?.message || 'Validation failed', null, 400);
     }
   };
 };

@@ -1,25 +1,25 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import Course from '../models/Course.js';
 import Enrollment from '../models/Enrollment.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { ROLES, normalizeRole } from '../constants/roles.js';
-import { AuthenticatedRequest } from '../types/express.types.js';
 
 /**
  * Require Course Access / Enrollment Middleware
  * Verifies that the user is enrolled in the course, is the instructor, or has admin privileges
  */
-export const requireCourseAccess = async (
-  req: AuthenticatedRequest,
+export const requireCourseAccess: RequestHandler = async (
+  req: Request,
   res: Response,
   next: NextFunction
-): Promise<any> => {
+): Promise<void> => {
   try {
-    const studentId = req.auth?.userId || req.user?._id;
+    const studentId = req.auth?.userId || req.user?._id?.toString();
     const userRole = normalizeRole(req.user?.role || req.auth?.role);
 
     if (!studentId) {
-      return ApiResponse.error(res, 'Unauthorized: Please authenticate first', null, 401);
+      ApiResponse.error(res, 'Unauthorized: Please authenticate first', null, 401);
+      return;
     }
 
     // Admins have full access
@@ -29,16 +29,18 @@ export const requireCourseAccess = async (
 
     const courseId = req.params.courseId || req.body.courseId;
     if (!courseId) {
-      return ApiResponse.error(res, 'Course ID is required', null, 400);
+      ApiResponse.error(res, 'Course ID is required', null, 400);
+      return;
     }
 
     const course = await Course.findById(courseId);
     if (!course) {
-      return ApiResponse.error(res, 'Course not found', null, 404);
+      ApiResponse.error(res, 'Course not found', null, 404);
+      return;
     }
 
     // Instructor of the course has full access
-    if (course.educator === studentId || course.instructorId === studentId) {
+    if (course.educator === studentId || (course as any).instructorId === studentId) {
       return next();
     }
 
@@ -50,18 +52,19 @@ export const requireCourseAccess = async (
     });
 
     if (!enrollment) {
-      return ApiResponse.error(
+      ApiResponse.error(
         res,
         'Forbidden: You must be enrolled in this course to access this content',
         null,
         403
       );
+      return;
     }
 
-    (req as any).enrollment = enrollment;
+    req.enrollment = enrollment;
     next();
   } catch (error: any) {
-    return ApiResponse.error(res, error.message || 'Course access verification failed', null, 500);
+    ApiResponse.error(res, error?.message || 'Course access verification failed', null, 500);
   }
 };
 

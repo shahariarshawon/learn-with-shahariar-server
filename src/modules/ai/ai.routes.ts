@@ -7,31 +7,31 @@ import { authorizeRole } from '../../middleware/rbac.middleware.js';
 const aiRouter: Router = Router();
 
 // Apply AI rate limiter to all AI routes
-aiRouter.use(aiLimiter as any);
+aiRouter.use(aiLimiter);
 
 /**
  * GET /api/ai/recommendations
  * Personalized course recommendations
  */
-aiRouter.get('/recommendations', authenticateUser as any, AIController.getRecommendations as any);
+aiRouter.get('/recommendations', authenticateUser, AIController.getRecommendations);
 
 /**
  * POST /api/ai/chat
  * Context-aware AI Chat assistant
  */
-aiRouter.post('/chat', authenticateUser as any, AIController.chat as any);
+aiRouter.post('/chat', authenticateUser, AIController.chat);
 
 /**
  * POST /api/ai/generate-quiz
  * Generate multiple-choice questions for a lesson
  */
-aiRouter.post('/generate-quiz', authenticateUser as any, AIController.generateQuiz as any);
+aiRouter.post('/generate-quiz', authenticateUser, AIController.generateQuiz);
 
 /**
  * POST /api/ai/generate-summary
  * Generate lesson summary & learning objectives
  */
-aiRouter.post('/generate-summary', authenticateUser as any, AIController.generateSummary as any);
+aiRouter.post('/generate-summary', authenticateUser, AIController.generateSummary);
 
 /**
  * POST /api/ai/index-course/:courseId
@@ -39,9 +39,9 @@ aiRouter.post('/generate-summary', authenticateUser as any, AIController.generat
  */
 aiRouter.post(
   '/index-course/:courseId',
-  authenticateUser as any,
-  authorizeRole('instructor', 'admin') as any,
-  AIController.indexCourse as any
+  authenticateUser,
+  authorizeRole('instructor', 'admin'),
+  AIController.indexCourse
 );
 
 export default aiRouter;

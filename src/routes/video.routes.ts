@@ -8,19 +8,19 @@ import { watchProgressSchema } from '../validators/video.validator.js';
 const videoRouter: Router = Router();
 
 // Require authentication for all video routes
-videoRouter.use(authenticateUser as any);
+videoRouter.use(authenticateUser);
 
 /**
  * GET /api/videos/continue
  * Retrieve continue watching state
  */
-videoRouter.get('/continue', VideoController.getContinueWatching as any);
+videoRouter.get('/continue', VideoController.getContinueWatching);
 
 /**
  * GET /api/videos/:lessonId/access
  * Retrieve secure video access info
  */
-videoRouter.get('/:lessonId/access', verifyVideoAccess as any, VideoController.getVideoAccess as any);
+videoRouter.get('/:lessonId/access', verifyVideoAccess, VideoController.getVideoAccess);
 
 /**
  * POST /api/videos/progress
@@ -29,8 +29,8 @@ videoRouter.get('/:lessonId/access', verifyVideoAccess as any, VideoController.g
 videoRouter.post(
   '/progress',
   validateRequest(watchProgressSchema),
-  verifyVideoAccess as any,
-  VideoController.updateWatchProgress as any
+  verifyVideoAccess,
+  VideoController.updateWatchProgress
 );
 
 export default videoRouter;

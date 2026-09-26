@@ -6,6 +6,9 @@
     "outDir": "./dist",
     "rootDir": "./",
     "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noImplicitReturns": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -13,6 +16,6 @@
     "declaration": false,
     "sourceMap": true
   },
-  "include": ["src/**/*", "server.ts"],
+  "include": ["src/**/*", "server.ts", "api/**/*"],
   "exclude": ["node_modules", "dist"]
 }

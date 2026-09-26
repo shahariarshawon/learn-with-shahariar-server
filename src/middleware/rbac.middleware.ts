@@ -1,30 +1,31 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { normalizeRole, ROLES } from '../constants/roles.js';
 import { clerkClient } from '@clerk/express';
-import { AuthenticatedRequest } from '../types/express.types.js';
 
 /**
  * Role-Based Access Control (RBAC) Middleware
  * @param allowedRoles - List of allowed roles (e.g., ROLES.INSTRUCTOR, ROLES.ADMIN)
  */
-export const authorizeRole = (...allowedRoles: string[]) => {
+export const authorizeRole = (...allowedRoles: string[]): RequestHandler => {
   const normalizedAllowedRoles = allowedRoles.map((r) => normalizeRole(r));
 
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction): any => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user && !req.auth?.userId) {
-      return ApiResponse.error(res, 'Unauthorized: Please authenticate first', null, 401);
+      ApiResponse.error(res, 'Unauthorized: Please authenticate first', null, 401);
+      return;
     }
 
     const currentRole = normalizeRole(req.user?.role || req.auth?.role);
 
     if (!normalizedAllowedRoles.includes(currentRole)) {
-      return ApiResponse.error(
+      ApiResponse.error(
         res,
         `Forbidden: Role '${currentRole}' is not authorized to access this resource`,
         null,
         403
       );
+      return;
     }
 
     next();
@@ -34,16 +35,17 @@ export const authorizeRole = (...allowedRoles: string[]) => {
 /**
  * Backward compatibility middleware for legacy protectEducator
  */
-export const protectEducator = async (
-  req: AuthenticatedRequest,
+export const protectEducator: RequestHandler = async (
+  req: Request,
   res: Response,
   next: NextFunction
-): Promise<any> => {
+): Promise<void> => {
   try {
-    const userId = req.auth?.userId || req.user?._id;
+    const userId = req.auth?.userId || req.user?._id?.toString();
 
     if (!userId) {
-      return ApiResponse.error(res, 'Unauthorized: User not authenticated', null, 401);
+      ApiResponse.error(res, 'Unauthorized: User not authenticated', null, 401);
+      return;
     }
 
     // Check DB user first
@@ -54,7 +56,8 @@ export const protectEducator = async (
       }
       // If user is from our native DB and not instructor, deny immediately
       if (!userId.startsWith('user_')) {
-        return ApiResponse.error(res, 'Unauthorized Access! Educator privileges required.', null, 403);
+        ApiResponse.error(res, 'Unauthorized Access! Educator privileges required.', null, 403);
+        return;
       }
     }
 
@@ -64,15 +67,17 @@ export const protectEducator = async (
       const role = clerkUser?.publicMetadata?.role;
 
       if (role !== 'educator' && normalizeRole(role) !== ROLES.INSTRUCTOR) {
-        return ApiResponse.error(res, 'Unauthorized Access! Educator privileges required.', null, 403);
+        ApiResponse.error(res, 'Unauthorized Access! Educator privileges required.', null, 403);
+        return;
       }
 
       next();
     } catch (clerkErr) {
-      return ApiResponse.error(res, 'Unauthorized Access! Educator privileges required.', null, 403);
+      ApiResponse.error(res, 'Unauthorized Access! Educator privileges required.', null, 403);
+      return;
     }
   } catch (error: any) {
-    return ApiResponse.error(res, error.message || 'Authorization failed', null, 403);
+    ApiResponse.error(res, error?.message || 'Authorization failed', null, 403);
   }
 };
 

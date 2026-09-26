@@ -4,16 +4,16 @@ import { authenticateUser } from '../middleware/auth.middleware.js';
 
 const subscriptionRouter: Router = Router();
 
-subscriptionRouter.use(authenticateUser as any);
+subscriptionRouter.use(authenticateUser);
 
 /**
  * POST /api/subscription/subscribe
  */
-subscriptionRouter.post('/subscribe', SubscriptionController.subscribe as any);
+subscriptionRouter.post('/subscribe', SubscriptionController.subscribe);
 
 /**
  * GET /api/subscription/me
  */
-subscriptionRouter.get('/me', SubscriptionController.getSubscriptionMe as any);
+subscriptionRouter.get('/me', SubscriptionController.getSubscriptionMe);
 
 export default subscriptionRouter;

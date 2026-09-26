@@ -6,34 +6,34 @@ import { authorizeRole } from '../middleware/rbac.middleware.js';
 const adminRouter: Router = Router();
 
 // Protect all admin routes with Authentication & Strict Admin RBAC Guard
-adminRouter.use(authenticateUser as any);
-adminRouter.use(authorizeRole('admin') as any);
+adminRouter.use(authenticateUser);
+adminRouter.use(authorizeRole('admin'));
 
 /**
  * Dashboard & Analytics
  */
-adminRouter.get('/dashboard', AdminController.getDashboard as any);
-adminRouter.get('/analytics', AdminController.getAnalytics as any);
+adminRouter.get('/dashboard', AdminController.getDashboard);
+adminRouter.get('/analytics', AdminController.getAnalytics);
 
 /**
  * User Management
  */
-adminRouter.get('/users', AdminController.getUsers as any);
-adminRouter.patch('/users/:userId/role', AdminController.updateUserRole as any);
-adminRouter.patch('/users/:userId/status', AdminController.updateUserStatus as any);
+adminRouter.get('/users', AdminController.getUsers);
+adminRouter.patch('/users/:userId/role', AdminController.updateUserRole);
+adminRouter.patch('/users/:userId/status', AdminController.updateUserStatus);
 
 /**
  * Course Moderation
  */
-adminRouter.get('/courses/pending', AdminController.getPendingCourses as any);
-adminRouter.patch('/courses/:courseId/approve', AdminController.approveCourse as any);
-adminRouter.patch('/courses/:courseId/reject', AdminController.rejectCourse as any);
+adminRouter.get('/courses/pending', AdminController.getPendingCourses);
+adminRouter.patch('/courses/:courseId/approve', AdminController.approveCourse);
+adminRouter.patch('/courses/:courseId/reject', AdminController.rejectCourse);
 
 /**
  * Payment & Refund Management
  */
-adminRouter.get('/transactions', AdminController.getTransactions as any);
-adminRouter.get('/refunds', AdminController.getRefunds as any);
-adminRouter.get('/payments/stats', AdminController.getPaymentStats as any);
+adminRouter.get('/transactions', AdminController.getTransactions);
+adminRouter.get('/refunds', AdminController.getRefunds);
+adminRouter.get('/payments/stats', AdminController.getPaymentStats);
 
 export default adminRouter;
