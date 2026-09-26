@@ -9,6 +9,7 @@ import learningRouter from './learning.routes.js';
 import studentRouter from './student.routes.js';
 import bookmarkRouter from './bookmark.routes.js';
 import noteRouter from './note.routes.js';
+import videoRouter from './video.routes.js';
 
 const apiRouter: Router = express.Router();
 
@@ -23,5 +24,6 @@ apiRouter.use('/learning', learningRouter);
 apiRouter.use('/student', studentRouter);
 apiRouter.use('/bookmarks', bookmarkRouter);
 apiRouter.use('/notes', noteRouter);
+apiRouter.use('/videos', videoRouter);
 
 export default apiRouter;
