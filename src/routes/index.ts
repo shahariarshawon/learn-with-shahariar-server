@@ -10,6 +10,8 @@ import studentRouter from './student.routes.js';
 import bookmarkRouter from './bookmark.routes.js';
 import noteRouter from './note.routes.js';
 import videoRouter from './video.routes.js';
+import instructorRouter from './instructor.routes.js';
+import adminRouter from './admin.routes.js';
 
 const apiRouter: Router = express.Router();
 
@@ -17,6 +19,8 @@ apiRouter.use('/auth', authRouter);
 apiRouter.use('/courses', courseRouter);
 apiRouter.use('/course', courseRouter);
 apiRouter.use('/educator', educatorRouter);
+apiRouter.use('/instructor', instructorRouter);
+apiRouter.use('/admin', adminRouter);
 apiRouter.use('/user', userRouter);
 apiRouter.use('/quiz', quizRouter);
 apiRouter.use('/progress', progressRouter);

@@ -76,6 +76,13 @@ const courseSchema = new Schema<ICourseDocument>(
       default: 'published',
       index: true,
     },
+    approvalStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected', 'archived'],
+      default: 'approved',
+      index: true,
+    },
+    rejectionReason: { type: String, default: '' },
     isPublished: { type: Boolean, default: true, index: true },
 
     // Instructor reference

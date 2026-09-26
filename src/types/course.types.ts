@@ -3,6 +3,7 @@ import { ILesson } from './lesson.types.js';
 
 export type CourseLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels';
 export type CourseStatus = 'draft' | 'published' | 'archived';
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'archived';
 
 export interface ILecture {
   lectureId: string;
@@ -57,6 +58,8 @@ export interface ICourse {
   discountPrice?: number;
   duration?: string;
   status: CourseStatus;
+  approvalStatus?: ApprovalStatus;
+  rejectionReason?: string;
   isPublished?: boolean;
   
   // Instructor reference
