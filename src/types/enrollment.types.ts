@@ -9,6 +9,8 @@ export interface IEnrollment {
   enrolledAt?: Date;
   progress: number; // percentage 0-100
   completedLessons: string[];
+  lastAccessedLesson?: string;
+  lastAccessedAt?: Date;
   status: EnrollmentStatus;
   createdAt?: Date;
   updatedAt?: Date;
