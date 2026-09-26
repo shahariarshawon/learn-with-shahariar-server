@@ -16,9 +16,11 @@ import paymentRouter from './payment.routes.js';
 import subscriptionRouter from './subscription.routes.js';
 import certificateRouter from './certificate.routes.js';
 import aiRouter from '../modules/ai/ai.routes.js';
+import healthRouter from './health.routes.js';
 
 const apiRouter: Router = express.Router();
 
+apiRouter.use('/health', healthRouter);
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/courses', courseRouter);
 apiRouter.use('/course', courseRouter);

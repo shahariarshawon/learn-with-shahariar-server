@@ -6,6 +6,7 @@ import { ApiResponse } from '../utils/apiResponse.js';
 import { clerkClient } from '@clerk/express';
 import { normalizeRole } from '../constants/roles.js';
 import { AuthenticatedRequest } from '../types/express.types.js';
+import { logger } from '../config/logger.js';
 
 /**
  * Unified Authentication Middleware
@@ -85,7 +86,7 @@ export const authenticateUser = async (
           const clerkRole = clerkUser?.publicMetadata?.role;
           role = normalizeRole(clerkRole);
         } catch (clerkFetchErr: any) {
-          console.warn('[AuthMiddleware] Clerk API user fetch warning:', clerkFetchErr.message);
+          logger.warn(`[AuthMiddleware] Clerk API user fetch warning: ${clerkFetchErr.message}`);
         }
 
         user = await User.create({
@@ -98,7 +99,7 @@ export const authenticateUser = async (
           enrolledCourses: [],
         });
       } catch (createErr: any) {
-        console.error('[AuthMiddleware] Auto user creation error:', createErr.message);
+        logger.error(`[AuthMiddleware] Auto user creation error: ${createErr.message}`);
         user = await User.findById(userId);
       }
     }
@@ -117,10 +118,12 @@ export const authenticateUser = async (
 
     next();
   } catch (error: any) {
-    console.error('[AuthMiddleware Error]:', error);
+    logger.error(`[AuthMiddleware Error]: ${error.message}`);
     return ApiResponse.error(res, 'Authentication failed', error.message, 401);
   }
 };
+
+export const requireAuth = authenticateUser;
 
 /**
  * Optional Authentication (does not block if unauthenticated)

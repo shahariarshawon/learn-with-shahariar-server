@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/apiError.js';
+import { AppError } from '../errors/AppError.js';
 import { env } from '../config/env.js';
+import { logger } from '../config/logger.js';
 
 export const notFoundHandler = (req: Request, _res: Response, next: NextFunction): void => {
   const error = new ApiError(404, `Route not found: ${req.method} ${req.originalUrl}`);
@@ -9,14 +11,22 @@ export const notFoundHandler = (req: Request, _res: Response, next: NextFunction
 };
 
 export const errorHandler = (
-  err: ApiError | Error | any,
+  err: ApiError | AppError | Error | any,
   req: Request,
   res: Response,
   _next: NextFunction
 ): Response => {
-  let statusCode = (err as ApiError).statusCode || (res.statusCode !== 200 ? res.statusCode : 500);
+  let statusCode = 500;
+  if (err instanceof AppError || err instanceof ApiError) {
+    statusCode = err.statusCode;
+  } else if (err.statusCode) {
+    statusCode = err.statusCode;
+  } else if (res.statusCode && res.statusCode !== 200) {
+    statusCode = res.statusCode;
+  }
+
   let message = err.message || 'Internal Server Error';
-  let errors = (err as ApiError).errors || null;
+  let errors = err.errors || null;
 
   // Handle Mongoose CastError (invalid ObjectId)
   if (err.name === 'CastError') {
@@ -39,11 +49,11 @@ export const errorHandler = (
       .join(', ');
   }
 
-  // Log server errors
+  // Log server errors using Winston logger
   if (statusCode >= 500) {
-    console.error(`[Server Error] [${req.method} ${req.url}]:`, err);
+    logger.error(`[Server Error] [${req.method} ${req.url}]: ${err.message}`, { stack: err.stack });
   } else if (env.NODE_ENV === 'development') {
-    console.warn(`[Client Error] [${req.method} ${req.url}] (${statusCode}):`, message);
+    logger.warn(`[Client Error] [${req.method} ${req.url}] (${statusCode}): ${message}`);
   }
 
   return ApiResponse.error(res, message, errors, statusCode);

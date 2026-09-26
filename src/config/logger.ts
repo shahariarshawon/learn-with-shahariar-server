@@ -1,37 +1,33 @@
-import { Request, Response, NextFunction } from 'express';
+import winston from 'winston';
 
-export class Logger {
-  private static formatTime(): string {
-    return new Date().toISOString();
-  }
+const { combine, timestamp, printf, colorize, errors } = winston.format;
 
-  static info(message: string, meta?: any) {
-    console.log(`[INFO] [${this.formatTime()}] ${message}`, meta ? JSON.stringify(meta) : '');
-  }
+const logFormat = printf(({ level, message, timestamp, stack }) => {
+  return `${timestamp} [${level}]: ${stack || message}`;
+});
 
-  static warn(message: string, meta?: any) {
-    console.warn(`[WARN] [${this.formatTime()}] ${message}`, meta ? JSON.stringify(meta) : '');
-  }
+export const logger = winston.createLogger({
+  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  format: combine(
+    timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    errors({ stack: true }),
+    logFormat
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: combine(
+        colorize(),
+        timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        errors({ stack: true }),
+        logFormat
+      ),
+    }),
+  ],
+});
 
-  static error(message: string, meta?: any) {
-    console.error(`[ERROR] [${this.formatTime()}] ${message}`, meta ? JSON.stringify(meta) : '');
-  }
-
-  static http(message: string) {
-    console.log(`[HTTP] [${this.formatTime()}] ${message}`);
-  }
-}
-
-/**
- * Express Middleware for Request Logging
- */
-export const requestLogger = (req: Request, res: Response, next: NextFunction): void => {
-  const start = Date.now();
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    Logger.http(`${req.method} ${req.originalUrl} ${res.statusCode} - ${duration}ms`);
-  });
+export const requestLogger = (req: any, _res: any, next: any) => {
+  logger.info(`${req.method} ${req.originalUrl} - IP: ${req.ip}`);
   next();
 };
 
-export default Logger;
+export default logger;
