@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lws_lms_backend
+    restart: always
+    ports:
+      - "5001:5001"
+    environment:
+      NODE_ENV: production
+      PORT: 5001
+      DATABASE_URL: mongodb://mongodb:27017/lws_db
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: lws_production_jwt_secret_key_2026
+    depends_on:
+      - mongodb
+      - redis
+
+  mongodb:
+    image: mongo:7.0
+    container_name: lws_lms_mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: lws_lms_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+volumes:
+  mongo_data:
