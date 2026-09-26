@@ -24,4 +24,16 @@ export const authLimiter = rateLimit({
   },
 });
 
+// Dedicated rate limiter for AI module endpoints
+export const aiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'AI rate limit exceeded. Please wait a few minutes before trying again.',
+  },
+});
+
 export default apiLimiter;

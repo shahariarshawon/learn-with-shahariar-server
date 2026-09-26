@@ -15,6 +15,7 @@ import adminRouter from './admin.routes.js';
 import paymentRouter from './payment.routes.js';
 import subscriptionRouter from './subscription.routes.js';
 import certificateRouter from './certificate.routes.js';
+import aiRouter from '../modules/ai/ai.routes.js';
 
 const apiRouter: Router = express.Router();
 
@@ -27,6 +28,7 @@ apiRouter.use('/admin', adminRouter);
 apiRouter.use('/payment', paymentRouter);
 apiRouter.use('/subscription', subscriptionRouter);
 apiRouter.use('/certificate', certificateRouter);
+apiRouter.use('/ai', aiRouter);
 apiRouter.use('/user', userRouter);
 apiRouter.use('/quiz', quizRouter);
 apiRouter.use('/progress', progressRouter);

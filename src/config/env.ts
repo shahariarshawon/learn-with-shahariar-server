@@ -18,6 +18,9 @@ export interface EnvConfig {
   STRIPE_SECRET_KEY: string;
   STRIPE_WEBHOOK_SECRET: string;
   CURRENCY: string;
+  AI_API_KEY?: string;
+  GEMINI_API_KEY?: string;
+  OPENAI_API_KEY?: string;
 }
 
 export const env: EnvConfig = {
@@ -50,6 +53,11 @@ export const env: EnvConfig = {
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || '',
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || '',
   CURRENCY: process.env.CURRENCY || 'usd',
+
+  // AI Provider Keys
+  AI_API_KEY: process.env.AI_API_KEY || process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || '',
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
 };
 
 export default env;
