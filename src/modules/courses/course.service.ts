@@ -5,6 +5,95 @@ import { ApiError } from '../../utils/apiError.js';
 import { slugify } from '../../utils/slugify.js';
 import { ICourse, CourseStatus } from './course.types.js';
 
+export function serializeCourse(courseDoc: any) {
+  if (!courseDoc) return null;
+  const raw = typeof courseDoc.toObject === 'function' ? courseDoc.toObject({ virtuals: true }) : { ...courseDoc };
+
+  const id = raw._id?.toString() || raw.id;
+  const title = raw.courseTitle || raw.title || 'Untitled Course';
+  const description = raw.courseDescription || raw.description || '';
+  const thumbnail = raw.courseThumbnail || raw.thumbnail || '';
+  const price = raw.coursePrice ?? raw.price ?? 0;
+  const discount = raw.discount ?? 0;
+  const discountPrice = Number((price - (discount * price) / 100).toFixed(2));
+  const ratings = raw.courseRatings || [];
+  const avgRating = ratings.length > 0
+    ? Number((ratings.reduce((acc: number, curr: any) => acc + (curr.rating || 5), 0) / ratings.length).toFixed(1))
+    : 4.8;
+  const studentCount = Array.isArray(raw.enrolledStudents) ? raw.enrolledStudents.length : 0;
+
+  // Build modules
+  let modules = raw.modules || [];
+  if ((!modules || modules.length === 0) && Array.isArray(raw.courseContent) && raw.courseContent.length > 0) {
+    modules = raw.courseContent.map((ch: any, idx: number) => ({
+      moduleId: ch.chapterId || String(idx + 1),
+      moduleTitle: ch.chapterTitle || ch.title || `Module ${idx + 1}`,
+      title: ch.chapterTitle || ch.title || `Module ${idx + 1}`,
+      moduleOrder: ch.chapterOrder || idx + 1,
+      order: ch.chapterOrder || idx + 1,
+      description: ch.description || '',
+      lessons: (ch.chapterContent || []).map((lec: any, lIdx: number) => ({
+        lessonId: lec.lectureId || lec.lessonId || String(lIdx + 1),
+        title: lec.lectureTitle || lec.title || `Lesson ${lIdx + 1}`,
+        description: lec.description || '',
+        videoUrl: lec.lectureUrl || lec.videoUrl || '',
+        duration: Number(lec.lectureDuration || lec.duration || 0),
+        order: lec.lectureOrder || lec.order || lIdx + 1,
+        isPreview: Boolean(lec.isPreviewFree ?? lec.isPreview ?? false),
+        resources: lec.resources || [],
+      })),
+    }));
+  }
+
+  // Build courseContent
+  const courseContent = modules.map((mod: any, mIdx: number) => ({
+    chapterId: mod.moduleId || String(mIdx + 1),
+    chapterOrder: mod.moduleOrder || mod.order || mIdx + 1,
+    chapterTitle: mod.moduleTitle || mod.title || `Module ${mIdx + 1}`,
+    chapterContent: (mod.lessons || []).map((les: any, lIdx: number) => ({
+      lectureId: les.lessonId || les.lectureId || les._id?.toString() || String(lIdx + 1),
+      lectureTitle: les.title || les.lectureTitle || `Lesson ${lIdx + 1}`,
+      lectureDuration: les.duration || les.lectureDuration || 0,
+      lectureUrl: les.videoUrl || les.lectureUrl || '',
+      isPreviewFree: les.isPreview ?? les.isPreviewFree ?? true,
+      lectureOrder: les.order || les.lectureOrder || lIdx + 1,
+      description: les.description || '',
+      resources: les.resources || [],
+    })),
+  }));
+
+  const requirements = raw.prerequisites || raw.requirements || [];
+  const learningObjectives = raw.learningObjectives || raw.learningOutcomes || [];
+
+  return {
+    ...raw,
+    _id: id,
+    id,
+    courseTitle: title,
+    title,
+    courseDescription: description,
+    description,
+    courseThumbnail: thumbnail,
+    thumbnail,
+    coursePrice: price,
+    price,
+    discount,
+    discountPrice,
+    rating: avgRating,
+    students: studentCount,
+    duration: raw.duration || '24 hours',
+    learningObjectives,
+    learningOutcomes: learningObjectives,
+    prerequisites: requirements,
+    requirements,
+    modules,
+    courseContent,
+    status: raw.status || 'published',
+    approvalStatus: raw.approvalStatus || 'approved',
+    isPublished: raw.isPublished !== false,
+  };
+}
+
 export class CourseService {
   static async createCourse({
     instructorId,
@@ -15,7 +104,7 @@ export class CourseService {
     courseDataRaw: any;
     imageFile?: Express.Multer.File;
   }) {
-    let courseData: Partial<ICourse> = {};
+    let courseData: any = {};
     if (typeof courseDataRaw === 'string') {
       try {
         courseData = JSON.parse(courseDataRaw);
@@ -44,36 +133,66 @@ export class CourseService {
 
     const slug = slugify(title);
 
+    // Convert courseContent to modules if provided
+    let modules = courseData.modules || [];
+    if ((!modules || modules.length === 0) && Array.isArray(courseData.courseContent)) {
+      modules = courseData.courseContent.map((ch: any, idx: number) => ({
+        moduleId: ch.chapterId || String(idx + 1),
+        moduleTitle: ch.chapterTitle || ch.title || `Module ${idx + 1}`,
+        title: ch.chapterTitle || ch.title || `Module ${idx + 1}`,
+        moduleOrder: ch.chapterOrder || idx + 1,
+        order: ch.chapterOrder || idx + 1,
+        description: ch.description || '',
+        lessons: (ch.chapterContent || []).map((lec: any, lIdx: number) => ({
+          lessonId: lec.lectureId || lec.lessonId || String(lIdx + 1),
+          title: lec.lectureTitle || lec.title || `Lesson ${lIdx + 1}`,
+          description: lec.description || '',
+          videoUrl: lec.lectureUrl || lec.videoUrl || '',
+          duration: Number(lec.lectureDuration || lec.duration || 0),
+          order: lec.lectureOrder || lec.order || lIdx + 1,
+          isPreview: Boolean(lec.isPreviewFree ?? lec.isPreview ?? false),
+          resources: lec.resources || [],
+        })),
+      }));
+    }
+
     const newCourse = await Course.create({
       ...courseData,
       courseTitle: title,
+      title,
       courseDescription: description,
+      description,
       coursePrice: price,
+      price,
       courseThumbnail: thumbnailUrl,
+      thumbnail: thumbnailUrl,
       slug,
       educator: instructorId,
-      status: 'published',
-      approvalStatus: 'approved',
-      isPublished: true,
-      modules: courseData.modules || [],
+      status: courseData.status || 'published',
+      approvalStatus: courseData.approvalStatus || 'approved',
+      isPublished: courseData.status ? courseData.status === 'published' : true,
+      modules,
     });
 
     await User.findByIdAndUpdate(instructorId, {
       $addToSet: { enrolledCourses: newCourse._id },
     });
 
-    return newCourse;
+    return serializeCourse(newCourse);
   }
 
   static async getPublicCourses(query: {
     search?: string;
     category?: string;
     level?: string;
+    price?: string;
+    sortBy?: string;
+    sort?: string;
     page?: string;
     limit?: string;
   }) {
     const page = Math.max(1, parseInt(query.page || '1', 10));
-    const limit = Math.min(50, Math.max(1, parseInt(query.limit || '12', 10)));
+    const limit = Math.min(100, Math.max(1, parseInt(query.limit || '24', 10)));
     const skip = (page - 1) * limit;
 
     const filter: Record<string, any> = {
@@ -81,37 +200,75 @@ export class CourseService {
       status: 'published',
     };
 
-    if (query.category) {
-      filter.category = query.category;
+    // Category filter
+    if (query.category && query.category !== 'All' && query.category !== 'All Categories') {
+      filter.category = new RegExp(`^${query.category.trim()}$`, 'i');
     }
 
-    if (query.level) {
-      filter.level = query.level;
+    // Level filter
+    if (query.level && query.level !== 'All') {
+      filter.level = new RegExp(`^${query.level.trim()}$`, 'i');
     }
 
-    if (query.search) {
-      const searchRegex = new RegExp(query.search, 'i');
+    // Price range filter
+    if (query.price && query.price !== 'All') {
+      if (query.price === 'under-75') {
+        filter.coursePrice = { $lt: 75 };
+      } else if (query.price === '75-90') {
+        filter.coursePrice = { $gte: 75, $lte: 90 };
+      } else if (query.price === 'over-90') {
+        filter.coursePrice = { $gt: 90 };
+      }
+    }
+
+    // Search query: by title, category, skills, description, or instructor
+    if (query.search && query.search.trim()) {
+      const searchRegex = new RegExp(query.search.trim(), 'i');
+      const matchingInstructors = await User.find({
+        $or: [{ name: searchRegex }, { email: searchRegex }],
+      }).select('_id');
+      const instructorIds = matchingInstructors.map((u) => u._id.toString());
+
       filter.$or = [
         { courseTitle: searchRegex },
         { courseDescription: searchRegex },
         { category: searchRegex },
         { skills: searchRegex },
+        { educator: { $in: instructorIds } },
       ];
     }
 
-    const [courses, total] = await Promise.all([
+    // Sorting
+    let sortOptions: Record<string, any> = { createdAt: -1 };
+    const sortParam = query.sortBy || query.sort || 'popular';
+
+    if (sortParam === 'newest') {
+      sortOptions = { createdAt: -1 };
+    } else if (sortParam === 'price-low') {
+      sortOptions = { coursePrice: 1 };
+    } else if (sortParam === 'price-high') {
+      sortOptions = { coursePrice: -1 };
+    } else if (sortParam === 'title') {
+      sortOptions = { courseTitle: 1 };
+    } else if (sortParam === 'highest-rated' || sortParam === 'rating') {
+      sortOptions = { 'courseRatings.rating': -1, createdAt: -1 };
+    }
+
+    const [rawCourses, total] = await Promise.all([
       Course.find(filter)
-        .select('-modules.lessons.videoUrl')
-        .sort({ createdAt: -1 })
+        .populate('educator', 'name email profileImage')
+        .sort(sortOptions)
         .skip(skip)
         .limit(limit)
         .lean(),
       Course.countDocuments(filter),
     ]);
 
+    const serialized = rawCourses.map(serializeCourse);
+
     return {
-      courses,
-      allCourses: courses,
+      courses: serialized,
+      allCourses: serialized,
       total,
       page,
       pages: Math.ceil(total / limit),
@@ -119,58 +276,126 @@ export class CourseService {
   }
 
   static async getInstructorCourses(instructorId: string, isAdmin: boolean = false) {
-    const ownCourses = await Course.find({ educator: instructorId }).sort({ createdAt: -1 });
-    if (isAdmin && ownCourses.length === 0) {
-      return await Course.find().sort({ createdAt: -1 });
-    }
-    return ownCourses;
+    const query = isAdmin ? {} : { educator: instructorId };
+    const courses = await Course.find(query)
+      .populate('educator', 'name email profileImage')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return courses.map(serializeCourse);
   }
 
   static async getCourseByIdOrSlug(idOrSlug: string, isInstructorOrAdmin: boolean = false) {
     let course: any = null;
 
     if (idOrSlug.match(/^[0-9a-fA-F]{24}$/)) {
-      course = await Course.findById(idOrSlug);
+      course = await Course.findById(idOrSlug).populate('educator', 'name email profileImage');
     }
 
     if (!course) {
-      course = await Course.findOne({ slug: idOrSlug.toLowerCase() });
+      course = await Course.findOne({ slug: idOrSlug.toLowerCase() }).populate('educator', 'name email profileImage');
     }
 
     if (!course) {
       throw new ApiError(404, 'Course not found');
     }
 
-    if (!isInstructorOrAdmin) {
-      const courseObj = course.toObject();
-      if (courseObj.modules) {
-        courseObj.modules = courseObj.modules.map((mod: any) => ({
-          ...mod,
-          lessons: (mod.lessons || []).map((les: any) => ({
-            ...les,
-            videoUrl: les.isPreview ? les.videoUrl : undefined,
-          })),
-        }));
-      }
-      return courseObj;
+    const serialized = serializeCourse(course);
+
+    if (!isInstructorOrAdmin && serialized?.modules) {
+      serialized.modules = serialized.modules.map((mod: any) => ({
+        ...mod,
+        lessons: (mod.lessons || []).map((les: any) => ({
+          ...les,
+          videoUrl: les.isPreview ? les.videoUrl : undefined,
+        })),
+      }));
     }
 
-    return course;
+    return serialized;
   }
 
-  static async updateCourse(courseId: string, updateData: Partial<ICourse>) {
+  static async updateCourse(courseId: string, updateData: any) {
     const course = await Course.findById(courseId);
     if (!course) {
       throw new ApiError(404, 'Course not found');
     }
 
-    if (updateData.courseTitle && updateData.courseTitle !== course.courseTitle) {
-      updateData.slug = slugify(updateData.courseTitle);
+    // Title & slug handling
+    const newTitle = updateData.courseTitle || updateData.title;
+    if (newTitle && newTitle !== course.courseTitle) {
+      course.courseTitle = newTitle;
+      course.slug = slugify(newTitle);
     }
 
-    Object.assign(course, updateData);
+    // Description
+    if (updateData.courseDescription !== undefined || updateData.description !== undefined) {
+      course.courseDescription = updateData.courseDescription ?? updateData.description;
+    }
+
+    // Thumbnail
+    if (updateData.courseThumbnail !== undefined || updateData.thumbnail !== undefined) {
+      course.courseThumbnail = updateData.courseThumbnail ?? updateData.thumbnail;
+    }
+
+    // Price
+    if (updateData.coursePrice !== undefined || updateData.price !== undefined) {
+      course.coursePrice = Number(updateData.coursePrice ?? updateData.price) || 0;
+    }
+
+    // Discount
+    if (updateData.discount !== undefined) {
+      course.discount = Number(updateData.discount) || 0;
+    }
+
+    // Category & Level
+    if (updateData.category) course.category = updateData.category;
+    if (updateData.level) course.level = updateData.level;
+    if (updateData.duration) course.duration = updateData.duration;
+
+    // Requirements / Prerequisites
+    if (updateData.requirements || updateData.prerequisites) {
+      course.prerequisites = updateData.prerequisites || updateData.requirements;
+    }
+    if (updateData.learningObjectives || updateData.learningOutcomes) {
+      course.learningObjectives = updateData.learningObjectives || updateData.learningOutcomes;
+    }
+
+    // Status
+    if (updateData.status) {
+      course.status = updateData.status;
+      course.isPublished = updateData.status === 'published';
+    }
+    if (updateData.approvalStatus) {
+      course.approvalStatus = updateData.approvalStatus;
+    }
+
+    // Course Content / Modules
+    if (Array.isArray(updateData.courseContent)) {
+      course.modules = updateData.courseContent.map((ch: any, idx: number) => ({
+        moduleId: ch.chapterId || String(idx + 1),
+        moduleTitle: ch.chapterTitle || ch.title || `Module ${idx + 1}`,
+        title: ch.chapterTitle || ch.title || `Module ${idx + 1}`,
+        moduleOrder: ch.chapterOrder || idx + 1,
+        order: ch.chapterOrder || idx + 1,
+        description: ch.description || '',
+        lessons: (ch.chapterContent || []).map((lec: any, lIdx: number) => ({
+          lessonId: lec.lectureId || lec.lessonId || String(lIdx + 1),
+          title: lec.lectureTitle || lec.title || `Lesson ${lIdx + 1}`,
+          description: lec.description || '',
+          videoUrl: lec.lectureUrl || lec.videoUrl || '',
+          duration: Number(lec.lectureDuration || lec.duration || 0),
+          order: lec.lectureOrder || lec.order || lIdx + 1,
+          isPreview: Boolean(lec.isPreviewFree ?? lec.isPreview ?? false),
+          resources: lec.resources || [],
+        })),
+      })) as any;
+    } else if (Array.isArray(updateData.modules)) {
+      course.modules = updateData.modules;
+    }
+
     await course.save();
-    return course;
+    return serializeCourse(course);
   }
 
   static async deleteCourse(courseId: string) {
@@ -190,7 +415,20 @@ export class CourseService {
     course.status = status;
     course.isPublished = status === 'published';
     await course.save();
-    return course;
+    return serializeCourse(course);
+  }
+
+  static async submitForReview(courseId: string) {
+    const course = await Course.findById(courseId);
+    if (!course) {
+      throw new ApiError(404, 'Course not found');
+    }
+
+    course.approvalStatus = 'pending';
+    course.status = 'draft';
+    course.isPublished = false;
+    await course.save();
+    return serializeCourse(course);
   }
 
   static async addModule(courseId: string, moduleData: { moduleTitle: string; description?: string }) {
@@ -203,14 +441,16 @@ export class CourseService {
     const newModule = {
       moduleId: new Date().getTime().toString(),
       moduleTitle: moduleData.moduleTitle,
+      title: moduleData.moduleTitle,
       moduleOrder,
+      order: moduleOrder,
       description: moduleData.description || '',
       lessons: [],
     };
 
     course.modules.push(newModule as any);
     await course.save();
-    return course;
+    return serializeCourse(course);
   }
 
   static async updateModule(
@@ -228,11 +468,16 @@ export class CourseService {
       throw new ApiError(404, 'Module not found');
     }
 
-    if (updateData.moduleTitle) course.modules[moduleIndex].moduleTitle = updateData.moduleTitle;
-    if (updateData.description !== undefined) course.modules[moduleIndex].description = updateData.description;
+    if (updateData.moduleTitle) {
+      course.modules[moduleIndex].moduleTitle = updateData.moduleTitle;
+      (course.modules[moduleIndex] as any).title = updateData.moduleTitle;
+    }
+    if (updateData.description !== undefined) {
+      course.modules[moduleIndex].description = updateData.description;
+    }
 
     await course.save();
-    return course;
+    return serializeCourse(course);
   }
 
   static async deleteModule(courseId: string, moduleId: string) {
@@ -243,7 +488,7 @@ export class CourseService {
 
     course.modules = course.modules.filter((m: any) => m.moduleId !== moduleId);
     await course.save();
-    return course;
+    return serializeCourse(course);
   }
 
   static async reorderModules(courseId: string, orderedModuleIds: string[]) {
@@ -259,13 +504,14 @@ export class CourseService {
       const mod = moduleMap.get(id);
       if (mod) {
         mod.moduleOrder = index + 1;
+        (mod as any).order = index + 1;
         reordered.push(mod);
       }
     });
 
     course.modules = reordered as any;
     await course.save();
-    return course;
+    return serializeCourse(course);
   }
 
   static async addLesson(courseId: string, moduleId: string, lessonData: any) {
@@ -280,20 +526,31 @@ export class CourseService {
     }
 
     const order = mod.lessons ? mod.lessons.length + 1 : 1;
+    const title = lessonData.title || lessonData.lectureTitle || 'Untitled Lesson';
+    const videoUrl = lessonData.videoUrl || lessonData.lectureUrl || '';
+    const duration = Number(lessonData.duration || lessonData.lectureDuration || 0);
+    const isPreview = Boolean(lessonData.isPreview ?? lessonData.isPreviewFree ?? false);
+
     const newLesson = {
       lessonId: new Date().getTime().toString(),
-      title: lessonData.title || lessonData.lectureTitle,
+      title,
       description: lessonData.description || '',
-      videoUrl: lessonData.videoUrl || lessonData.lectureUrl || '',
-      duration: lessonData.duration || lessonData.lectureDuration || 0,
+      videoUrl,
+      duration,
       order,
-      isPreview: lessonData.isPreview ?? lessonData.isPreviewFree ?? false,
+      isPreview,
       resources: lessonData.resources || [],
+      lectureId: new Date().getTime().toString(),
+      lectureTitle: title,
+      lectureDuration: duration,
+      lectureUrl: videoUrl,
+      isPreviewFree: isPreview,
+      lectureOrder: order,
     };
 
     mod.lessons.push(newLesson as any);
     await course.save();
-    return course;
+    return serializeCourse(course);
   }
 
   static async updateLesson(courseId: string, lessonId: string, lessonData: any) {
@@ -306,7 +563,16 @@ export class CourseService {
     for (const mod of course.modules) {
       const les = (mod.lessons as any[]).find((l: any) => l.lessonId === lessonId || l._id?.toString() === lessonId);
       if (les) {
-        Object.assign(les, lessonData);
+        if (lessonData.title) les.title = lessonData.title;
+        if (lessonData.lectureTitle) les.lectureTitle = lessonData.lectureTitle;
+        if (lessonData.description !== undefined) les.description = lessonData.description;
+        if (lessonData.videoUrl) les.videoUrl = lessonData.videoUrl;
+        if (lessonData.lectureUrl) les.lectureUrl = lessonData.lectureUrl;
+        if (lessonData.duration !== undefined) les.duration = Number(lessonData.duration);
+        if (lessonData.lectureDuration !== undefined) les.lectureDuration = Number(lessonData.lectureDuration);
+        if (lessonData.isPreview !== undefined) les.isPreview = Boolean(lessonData.isPreview);
+        if (lessonData.isPreviewFree !== undefined) les.isPreviewFree = Boolean(lessonData.isPreviewFree);
+        if (lessonData.resources) les.resources = lessonData.resources;
         foundLesson = true;
         break;
       }
@@ -317,7 +583,7 @@ export class CourseService {
     }
 
     await course.save();
-    return course;
+    return serializeCourse(course);
   }
 
   static async deleteLesson(courseId: string, lessonId: string) {
@@ -331,7 +597,7 @@ export class CourseService {
     });
 
     await course.save();
-    return course;
+    return serializeCourse(course);
   }
 
   static async reorderLessons(courseId: string, moduleId: string, orderedLessonIds: string[]) {
@@ -352,13 +618,14 @@ export class CourseService {
       const les = lessonMap.get(id);
       if (les) {
         les.order = index + 1;
+        les.lectureOrder = index + 1;
         reordered.push(les);
       }
     });
 
     mod.lessons = reordered as any;
     await course.save();
-    return course;
+    return serializeCourse(course);
   }
 
   static async updateRoadmap(courseId: string, roadmap: any[]) {
@@ -369,7 +636,7 @@ export class CourseService {
 
     course.roadmap = roadmap;
     await course.save();
-    return course;
+    return serializeCourse(course);
   }
 
   static async addChapter(courseId: string, chapter: any) {

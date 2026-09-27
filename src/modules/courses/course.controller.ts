@@ -64,6 +64,12 @@ export const unpublishCourse = asyncHandler(async (req: AuthenticatedRequest, re
   return ApiResponse.success(res, 'Course unpublished (moved to draft)', { course });
 });
 
+export const submitForReview = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const courseId = (req.params.courseId || req.params.id) as string;
+  const course = await CourseService.submitForReview(courseId);
+  return ApiResponse.success(res, 'Course submitted for moderation review', { course });
+});
+
 export const addModule = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const courseId = req.params.courseId as string;
   const course = await CourseService.addModule(courseId, req.body);
@@ -150,6 +156,7 @@ export const courseController = {
   deleteCourse,
   publishCourse,
   unpublishCourse,
+  submitForReview,
   addModule,
   updateModule,
   deleteModule,

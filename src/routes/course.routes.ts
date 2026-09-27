@@ -151,10 +151,14 @@ courseRouter.post(
   courseController.reorderLessons
 );
 
-// ==================== LEGACY COMPATIBILITY ENDPOINTS ====================
+// ==================== LEGACY COMPATIBILITY & DIRECT CRUD ENDPOINTS ====================
+courseRouter.post('/create', upload.single('image'), authenticateUser, courseController.createCourse);
 courseRouter.post('/add-lecture', authenticateUser, courseController.addLecture);
 courseRouter.post('/add-chapter', authenticateUser, courseController.addChapter);
 courseRouter.put('/update/:courseId', authenticateUser, courseController.updateCourse);
+courseRouter.delete('/delete/:courseId', authenticateUser, courseController.deleteCourse);
+courseRouter.patch('/status/:courseId', authenticateUser, courseController.publishCourse);
+courseRouter.post('/:courseId/submit-review', authenticateUser, courseController.submitForReview);
 courseRouter.get('/:id', courseController.getCourseId);
 
 export default courseRouter;

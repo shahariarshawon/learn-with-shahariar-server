@@ -21,6 +21,7 @@ const embeddedLessonSchema = new Schema(
     order: { type: Number, required: true, default: 0 },
     isPreview: { type: Boolean, default: false },
 
+    // Dual compatibility mappings
     lectureId: { type: String },
     lectureTitle: { type: String },
     lectureDuration: { type: Number },
@@ -35,7 +36,9 @@ const moduleSchema = new Schema(
   {
     moduleId: { type: String, required: true, default: () => new mongoose.Types.ObjectId().toString() },
     moduleTitle: { type: String, required: true, trim: true },
+    title: { type: String, trim: true },
     moduleOrder: { type: Number, required: true, default: 0 },
+    order: { type: Number, default: 0 },
     description: { type: String, default: '', trim: true },
     lessons: [embeddedLessonSchema],
   },
@@ -57,7 +60,7 @@ const courseSchema = new Schema<ICourseDocument>(
     slug: { type: String, required: true, unique: true, index: true, lowercase: true, trim: true },
     courseDescription: { type: String, required: true },
     courseThumbnail: { type: String, default: '' },
-    category: { type: String, default: 'Web Development', trim: true, index: true },
+    category: { type: String, default: 'Programming', trim: true, index: true },
     level: {
       type: String,
       enum: ['Beginner', 'Intermediate', 'Advanced', 'All Levels'],
@@ -113,17 +116,103 @@ const courseSchema = new Schema<ICourseDocument>(
   }
 );
 
-courseSchema.pre('validate', function (this: ICourseDocument, next) {
+// Bidirectional Data Model Synchronization hook
+courseSchema.pre('validate', function (this: any, next) {
+  // 1. Title & Slug
+  if (!this.courseTitle && this.title) {
+    this.courseTitle = this.title;
+  }
   if (!this.slug && this.courseTitle) {
     this.slug = slugify(this.courseTitle);
   }
-  if ((this.status as string) === 'published') {
+
+  // 2. Description
+  if (!this.courseDescription && this.description) {
+    this.courseDescription = this.description;
+  }
+
+  // 3. Thumbnail
+  if (!this.courseThumbnail && this.thumbnail) {
+    this.courseThumbnail = this.thumbnail;
+  }
+
+  // 4. Price
+  if (this.coursePrice === undefined && this.price !== undefined) {
+    this.coursePrice = Number(this.price) || 0;
+  }
+
+  // 5. Prerequisites / Requirements
+  if (this.requirements && (!this.prerequisites || this.prerequisites.length === 0)) {
+    this.prerequisites = Array.isArray(this.requirements) ? this.requirements : [this.requirements];
+  }
+
+  // 6. Publication Status Harmonization
+  if (this.status === 'published') {
     this.isPublished = true;
-  } else if (this.isPublished === false && (this.status as string) === 'published') {
+  } else if (this.isPublished === false && this.status === 'published') {
     this.status = 'draft';
   }
+
+  // 7. Course Content -> Modules Synchronization
+  if (Array.isArray(this.courseContent) && this.courseContent.length > 0 && (!this.modules || this.modules.length === 0)) {
+    this.modules = this.courseContent.map((ch: any, idx: number) => ({
+      moduleId: ch.chapterId || String(idx + 1),
+      moduleTitle: ch.chapterTitle || ch.title || `Module ${idx + 1}`,
+      title: ch.chapterTitle || ch.title || `Module ${idx + 1}`,
+      moduleOrder: ch.chapterOrder || idx + 1,
+      order: ch.chapterOrder || idx + 1,
+      description: ch.description || '',
+      lessons: (ch.chapterContent || []).map((lec: any, lIdx: number) => ({
+        lessonId: lec.lectureId || lec.lessonId || String(lIdx + 1),
+        title: lec.lectureTitle || lec.title || `Lesson ${lIdx + 1}`,
+        description: lec.description || '',
+        videoUrl: lec.lectureUrl || lec.videoUrl || '',
+        duration: Number(lec.lectureDuration || lec.duration || 0),
+        order: lec.lectureOrder || lec.order || lIdx + 1,
+        isPreview: Boolean(lec.isPreviewFree ?? lec.isPreview ?? false),
+        resources: lec.resources || [],
+        lectureId: lec.lectureId || lec.lessonId || String(lIdx + 1),
+        lectureTitle: lec.lectureTitle || lec.title || `Lesson ${lIdx + 1}`,
+        lectureDuration: Number(lec.lectureDuration || lec.duration || 0),
+        lectureUrl: lec.lectureUrl || lec.videoUrl || '',
+        isPreviewFree: Boolean(lec.isPreviewFree ?? lec.isPreview ?? false),
+        lectureOrder: lec.lectureOrder || lec.order || lIdx + 1,
+      })),
+    }));
+  }
+
+  // 8. Ensure modules have title, order and dual lesson attributes
+  if (Array.isArray(this.modules)) {
+    this.modules.forEach((mod: any, mIdx: number) => {
+      if (!mod.moduleTitle && mod.title) mod.moduleTitle = mod.title;
+      if (!mod.title && mod.moduleTitle) mod.title = mod.moduleTitle;
+      if (!mod.moduleOrder && mod.order) mod.moduleOrder = mod.order;
+      if (!mod.order && mod.moduleOrder) mod.order = mod.moduleOrder;
+      if (!mod.moduleId) mod.moduleId = String(mIdx + 1);
+
+      if (Array.isArray(mod.lessons)) {
+        mod.lessons.forEach((les: any, lIdx: number) => {
+          if (!les.title && les.lectureTitle) les.title = les.lectureTitle;
+          if (!les.lectureTitle && les.title) les.lectureTitle = les.title;
+          if (!les.videoUrl && les.lectureUrl) les.videoUrl = les.lectureUrl;
+          if (!les.lectureUrl && les.videoUrl) les.lectureUrl = les.videoUrl;
+          if (les.duration === undefined && les.lectureDuration !== undefined) les.duration = les.lectureDuration;
+          if (les.lectureDuration === undefined && les.duration !== undefined) les.lectureDuration = les.duration;
+          if (les.isPreview === undefined && les.isPreviewFree !== undefined) les.isPreview = les.isPreviewFree;
+          if (les.isPreviewFree === undefined && les.isPreview !== undefined) les.isPreviewFree = les.isPreview;
+          if (les.order === undefined && les.lectureOrder !== undefined) les.order = les.lectureOrder;
+          if (les.lectureOrder === undefined && les.order !== undefined) les.lectureOrder = les.order;
+          if (!les.lessonId) les.lessonId = les.lectureId || String(lIdx + 1);
+          if (!les.lectureId) les.lectureId = les.lessonId;
+        });
+      }
+    });
+  }
+
   next();
 });
+
+// VIRTUAL GETTERS & ALIASES
 
 courseSchema.virtual('title').get(function (this: ICourseDocument) {
   return this.courseTitle;
@@ -150,23 +239,41 @@ courseSchema.virtual('instructorId').get(function (this: ICourseDocument) {
   return this.educator;
 });
 
+courseSchema.virtual('instructor').get(function (this: ICourseDocument) {
+  return this.educator;
+});
+
+courseSchema.virtual('requirements').get(function (this: ICourseDocument) {
+  return this.prerequisites || [];
+});
+
+courseSchema.virtual('rating').get(function (this: ICourseDocument) {
+  if (!this.courseRatings || this.courseRatings.length === 0) return 4.8;
+  const sum = this.courseRatings.reduce((acc, curr) => acc + (curr.rating || 5), 0);
+  return Number((sum / this.courseRatings.length).toFixed(1));
+});
+
+courseSchema.virtual('students').get(function (this: ICourseDocument) {
+  return this.enrolledStudents ? this.enrolledStudents.length : 0;
+});
+
 courseSchema.virtual('sections').get(function (this: ICourseDocument) {
   return this.modules;
 });
 
 courseSchema.virtual('courseContent').get(function (this: ICourseDocument) {
   if (!this.modules) return [];
-  return this.modules.map((mod) => ({
-    chapterId: mod.moduleId,
-    chapterOrder: mod.moduleOrder,
-    chapterTitle: mod.moduleTitle,
-    chapterContent: (mod.lessons || []).map((les: any) => ({
-      lectureId: les.lessonId || les._id?.toString() || 'les_1',
-      lectureTitle: les.title || les.lectureTitle || '',
+  return this.modules.map((mod: any, mIdx: number) => ({
+    chapterId: mod.moduleId || String(mIdx + 1),
+    chapterOrder: mod.moduleOrder || mod.order || mIdx + 1,
+    chapterTitle: mod.moduleTitle || mod.title || `Module ${mIdx + 1}`,
+    chapterContent: (mod.lessons || []).map((les: any, lIdx: number) => ({
+      lectureId: les.lessonId || les.lectureId || les._id?.toString() || String(lIdx + 1),
+      lectureTitle: les.title || les.lectureTitle || `Lesson ${lIdx + 1}`,
       lectureDuration: les.duration || les.lectureDuration || 0,
       lectureUrl: les.videoUrl || les.lectureUrl || '',
       isPreviewFree: les.isPreview ?? les.isPreviewFree ?? true,
-      lectureOrder: les.order || les.lectureOrder || 0,
+      lectureOrder: les.order || les.lectureOrder || lIdx + 1,
     })),
   }));
 });
