@@ -11,7 +11,7 @@ export class AdminController {
    */
   static getDashboard = asyncHandler(async (_req: AuthenticatedRequest, res: Response) => {
     const data = await AdminService.getAdminDashboardData();
-    return ApiResponse.success(res, 'Admin dashboard metrics retrieved successfully', data);
+    return ApiResponse.success(res, 'Admin dashboard metrics retrieved successfully', { metrics: data, ...data });
   });
 
   /**
@@ -82,6 +82,22 @@ export class AdminController {
 
     const course = await AdminService.rejectCourse(courseId, rejectionReason);
     return ApiResponse.success(res, 'Course rejected successfully', course);
+  });
+
+  /**
+   * PATCH /api/admin/courses/:courseId/moderation
+   */
+  static updateModeration = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const courseId = String(req.params.courseId);
+    const { status, rejectionReason } = req.body;
+
+    if (status === 'approved') {
+      const course = await AdminService.approveCourse(courseId);
+      return ApiResponse.success(res, 'Course approved and published successfully', course);
+    } else {
+      const course = await AdminService.rejectCourse(courseId, rejectionReason || 'Course did not meet platform guidelines');
+      return ApiResponse.success(res, 'Course moderation updated successfully', course);
+    }
   });
 
   /**

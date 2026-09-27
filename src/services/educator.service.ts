@@ -65,9 +65,12 @@ export class EducatorService {
     return newCourse;
   }
 
-  static async getEducatorCourses(educatorId: string) {
-    const courses = await Course.find({ educator: educatorId });
-    return courses;
+  static async getEducatorCourses(educatorId: string, isAdmin: boolean = false) {
+    const ownCourses = await Course.find({ educator: educatorId });
+    if (isAdmin && ownCourses.length === 0) {
+      return await Course.find().sort({ createdAt: -1 });
+    }
+    return ownCourses;
   }
 
   static async getDashboardData(educatorId: string) {

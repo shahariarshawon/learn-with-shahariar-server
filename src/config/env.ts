@@ -21,6 +21,8 @@ export interface EnvConfig {
   AI_API_KEY?: string;
   GEMINI_API_KEY?: string;
   OPENAI_API_KEY?: string;
+  ADMIN_EMAIL: string;
+  ALLOWED_EDUCATOR_EMAIL: string;
 }
 
 export const env: EnvConfig = {
@@ -58,6 +60,10 @@ export const env: EnvConfig = {
   AI_API_KEY: process.env.AI_API_KEY || process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || '',
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
+
+  // Roles & Admin Permissions
+  ADMIN_EMAIL: process.env.ADMIN_EMAIL || process.env.ALLOWED_EDUCATOR_EMAIL || 'shahariarshawon.dev@gmail.com',
+  ALLOWED_EDUCATOR_EMAIL: process.env.ALLOWED_EDUCATOR_EMAIL || 'shahariarshawon.dev@gmail.com',
 };
 
 export default env;

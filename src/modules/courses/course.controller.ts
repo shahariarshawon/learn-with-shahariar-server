@@ -25,7 +25,9 @@ export const getPublicCourses = asyncHandler(async (req: AuthenticatedRequest, r
 
 export const getMyCourses = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const instructorId = (req.auth?.userId || req.user?._id) as string;
-  const courses = await CourseService.getInstructorCourses(instructorId);
+  const userRole = normalizeRole(req.user?.role || req.auth?.role);
+  const isAdmin = userRole === ROLES.ADMIN;
+  const courses = await CourseService.getInstructorCourses(instructorId, isAdmin);
   return ApiResponse.success(res, 'Instructor courses retrieved successfully', { courses });
 });
 

@@ -6,7 +6,9 @@ export class StudentService {
       .populate('courseId', 'courseTitle slug courseThumbnail category level duration educator')
       .sort({ lastAccessedAt: -1 });
 
-    const enrolledCourses = enrollments.map((e: any) => ({
+    const validEnrollments = enrollments.filter((e: any) => e && e.courseId);
+
+    const enrolledCourses = validEnrollments.map((e: any) => ({
       enrollmentId: e._id,
       course: e.courseId,
       progress: e.progress,

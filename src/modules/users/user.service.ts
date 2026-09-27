@@ -8,6 +8,7 @@ import { ApiError } from '../../utils/apiError.js';
 import { env } from '../../config/env.js';
 import { logger } from '../../config/logger.js';
 import { ICourseRating } from '../courses/course.types.js';
+import { normalizeRole, ROLES } from '../../constants/roles.js';
 
 export class UserService {
   static async getUserData(userId?: string) {
@@ -16,6 +17,8 @@ export class UserService {
     }
 
     let user = await User.findById(userId);
+    const adminEmail = (env.ADMIN_EMAIL || 'shahariarshawon.dev@gmail.com').toLowerCase();
+    const educatorEmail = (env.ALLOWED_EDUCATOR_EMAIL || 'shahariarshawon.dev@gmail.com').toLowerCase();
 
     if (!user) {
       let clerkUser: any = null;
@@ -40,6 +43,19 @@ export class UserService {
         '';
 
       const avatar = clerkUser?.imageUrl || clerkUser?.profileImageUrl || '';
+      let role: any = ROLES.STUDENT;
+
+      const clerkRole = clerkUser?.publicMetadata?.role;
+      if (clerkRole) {
+        role = normalizeRole(clerkRole) as any;
+      }
+
+      const lowerEmail = email.toLowerCase();
+      if (lowerEmail === adminEmail || lowerEmail.startsWith('admin@')) {
+        role = ROLES.ADMIN;
+      } else if (lowerEmail === educatorEmail) {
+        role = ROLES.INSTRUCTOR;
+      }
 
       user = await User.create({
         _id: userId,
@@ -47,8 +63,30 @@ export class UserService {
         email,
         imageUrl: avatar,
         profileImage: avatar,
+        role,
         enrolledCourses: [],
       });
+    } else {
+      const userEmail = (user.email || '').toLowerCase();
+      let roleNeedsUpdate = false;
+      let targetRole = user.role;
+
+      if (userEmail === adminEmail || userEmail.startsWith('admin@')) {
+        if (user.role !== ROLES.ADMIN) {
+          targetRole = ROLES.ADMIN;
+          roleNeedsUpdate = true;
+        }
+      } else if (userEmail === educatorEmail) {
+        if (user.role !== ROLES.INSTRUCTOR && user.role !== ROLES.ADMIN) {
+          targetRole = ROLES.INSTRUCTOR;
+          roleNeedsUpdate = true;
+        }
+      }
+
+      if (roleNeedsUpdate) {
+        user.role = targetRole as any;
+        await User.findByIdAndUpdate(user._id, { role: targetRole });
+      }
     }
 
     return user;
@@ -72,7 +110,11 @@ export class UserService {
       userData = await User.findById(userId).populate('enrolledCourses');
     }
 
-    return userData?.enrolledCourses || [];
+    // Safely filter out null/deleted courses from populated list
+    const enrolled = (userData?.enrolledCourses || []).filter(
+      (c: any) => c && (c._id || c.courseTitle || c.title)
+    );
+    return enrolled;
   }
 
   static async purchaseCourse({

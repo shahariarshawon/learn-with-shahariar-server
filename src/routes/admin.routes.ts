@@ -13,6 +13,7 @@ adminRouter.use(authorizeRole('admin'));
  * Dashboard & Analytics
  */
 adminRouter.get('/dashboard', AdminController.getDashboard);
+adminRouter.get('/metrics', AdminController.getDashboard);
 adminRouter.get('/analytics', AdminController.getAnalytics);
 
 /**
@@ -28,6 +29,7 @@ adminRouter.patch('/users/:userId/status', AdminController.updateUserStatus);
 adminRouter.get('/courses/pending', AdminController.getPendingCourses);
 adminRouter.patch('/courses/:courseId/approve', AdminController.approveCourse);
 adminRouter.patch('/courses/:courseId/reject', AdminController.rejectCourse);
+adminRouter.patch('/courses/:courseId/moderation', AdminController.updateModeration);
 
 /**
  * Payment & Refund Management
